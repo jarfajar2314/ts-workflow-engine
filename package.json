@@ -1,0 +1,17 @@
+{
+  "name": "workflow-engine",
+  "version": "0.0.1",
+  "description": "Workflow Engine for Javascript",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "jarfajar2314",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.8"
+  }
+}
