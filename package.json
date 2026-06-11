@@ -1,17 +1,35 @@
 {
-  "name": "workflow-engine",
-  "version": "0.0.1",
-  "description": "Workflow Engine for Javascript",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "jarfajar2314",
-  "license": "ISC",
-  "devDependencies": {
-    "@types/node": "^25.9.3",
-    "tsup": "^8.5.1",
-    "typescript": "^6.0.3",
-    "vitest": "^4.1.8"
-  }
+	"name": "@jarfajar/ts-workflow-engine",
+	"version": "0.0.1",
+	"description": "A lightweight, code-first, framework-agnostic workflow and approval engine for Node.js.",
+	"main": "./dist/index.js",
+	"module": "./dist/index.mjs",
+	"types": "./dist/index.d.ts",
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsup && tsc --emitDeclarationOnly",
+		"test": "vitest run"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/jarfajar2314/ts-workflow-engine.git"
+	},
+	"keywords": [
+		"typescript",
+		"workflow",
+		"state-machine",
+		"approval",
+		"engine"
+	],
+	"author": "jarfajar2314",
+	"license": "MIT",
+	"devDependencies": {
+		"@types/node": "^25.9.3",
+		"tsup": "^8.5.1",
+		"typescript": "^6.0.3",
+		"vitest": "^4.1.8"
+	}
 }
+
