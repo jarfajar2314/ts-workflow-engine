@@ -193,16 +193,16 @@ Project Link: [https://github.com/jarfajar2314/workflow-engine](https://github.c
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
 
-[contributors-shield]: https://img.shields.io/github/contributors/your_username/ts-workflow-engine.svg?style=for-the-badge
-[contributors-url]: https://github.com/your_username/ts-workflow-engine/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/your_username/ts-workflow-engine.svg?style=for-the-badge
-[forks-url]: https://github.com/your_username/ts-workflow-engine/network/members
-[stars-shield]: https://img.shields.io/github/stars/your_username/ts-workflow-engine.svg?style=for-the-badge
-[stars-url]: https://github.com/your_username/ts-workflow-engine/stargazers
-[issues-shield]: https://img.shields.io/github/issues/your_username/ts-workflow-engine.svg?style=for-the-badge
-[issues-url]: https://github.com/your_username/ts-workflow-engine/issues
-[license-shield]: https://img.shields.io/github/license/your_username/ts-workflow-engine.svg?style=for-the-badge
-[license-url]: https://github.com/your_username/ts-workflow-engine/blob/master/LICENSE.txt
+[contributors-shield]: https://img.shields.io/github/contributors/jarfajar2314/workflow-engine.svg?style=for-the-badge
+[contributors-url]: https://github.com/jarfajar2314/workflow-engine/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/jarfajar2314/workflow-engine.svg?style=for-the-badge
+[forks-url]: https://github.com/jarfajar2314/workflow-engine/network/members
+[stars-shield]: https://img.shields.io/github/stars/jarfajar2314/workflow-engine.svg?style=for-the-badge
+[stars-url]: https://github.com/jarfajar2314/workflow-engine/stargazers
+[issues-shield]: https://img.shields.io/github/issues/jarfajar2314/workflow-engine.svg?style=for-the-badge
+[issues-url]: https://github.com/jarfajar2314/workflow-engine/issues
+[license-shield]: https://img.shields.io/github/license/jarfajar2314/workflow-engine.svg?style=for-the-badge
+[license-url]: https://github.com/jarfajar2314/workflow-engine/blob/master/LICENSE.txt
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://linkedin.com/in/linkedin_username
 [TypeScript]: https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white
