@@ -40,6 +40,7 @@ export class PrismaDefinitionAdapter implements DefinitionAdapter {
 				: (record.steps as unknown as Record<string, StepDefinition>);
 
 		return {
+			id: record.id,
 			code: record.code,
 			version: record.version,
 			initialStepId: record.initialStepId,

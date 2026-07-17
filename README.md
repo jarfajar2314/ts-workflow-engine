@@ -72,6 +72,9 @@ Key highlights:
 - ⚡ **Code-First & Type-Safe**: Define workflows in pure TypeScript using a clean, fluent `WorkflowBuilder` API.
 - 🔌 **Adapter-Driven Architecture**: Core engine contains zero I/O logic.
 - 🗄️ **Official Prisma & PostgreSQL Support**: Persist workflow definitions, live execution states, and full audit action logs via `PrismaDefinitionAdapter` and `PrismaStorageAdapter`.
+- 🔒 **Optimistic Concurrency Control (OCC)**: Built-in `lockVersion` safety prevents race conditions and concurrent mutation conflicts.
+- ⚡ **Atomic Database Transactions**: Status updates and audit action logging execute inside single database transactions.
+- 🔔 **Typed Lifecycle Events & Webhook Hooks**: Subscribe to `workflowStart`, `stepChange`, `workflowComplete`, `workflowReject`, and `error` events or integrate custom `EventAdapter` classes.
 - 🔐 **Custom Identity Resolvers**: Decouple authorization logic (`ResolverAdapter`) to validate managers, roles, dynamic assignees, or custom user permissions.
 - 🔄 **Advanced Routing**: Out-of-the-box support for sequential steps, branching, rejection terminations, and **Send Back** re-approval cycles.
 
@@ -160,6 +163,11 @@ definitions.register(leaveWorkflow);
 const storage = new InMemoryStorage();
 const engine = new WorkflowEngine(definitions, storage, new SimpleResolver());
 
+// Listen for lifecycle events
+engine.on("stepChange", (event) => {
+  console.log(`Step transitioned: ${event.fromStepId} -> ${event.toStepId}`);
+});
+
 let instance = await engine.startWorkflow("LEAVE_REQUEST", "leave_doc", "req_101", "employee_1");
 await engine.submitAction(instance.id, "boss_user_1", "APPROVE");
 await engine.submitAction(instance.id, "hr_admin_99", "APPROVE");
@@ -225,8 +233,9 @@ npm run demo:prisma
 - [x] Code-First Fluent Builder API (`WorkflowBuilder`)
 - [x] In-Memory Adapters for Unit Testing
 - [x] Official Prisma & PostgreSQL Adapters (`PrismaDefinitionAdapter`, `PrismaStorageAdapter`)
+- [x] Webhook / Event Emitter Lifecycle Hooks (`onStepChange`, `onWorkflowComplete`, `EventAdapter`)
+- [x] Optimistic Concurrency Control (OCC) & Atomic DB Transactions
 - [ ] Drizzle ORM Storage Adapter
-- [ ] Webhook / Event Emitter Lifecycle Hooks
 - [ ] Visualizer Dashboard UI
 
 See the [open issues](https://github.com/jarfajar2314/ts-workflow-engine/issues) for a full list of proposed features (and known issues).

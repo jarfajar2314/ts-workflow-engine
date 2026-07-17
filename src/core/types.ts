@@ -1,6 +1,14 @@
-export type WorkflowStatus = 'DRAFT' | 'ACTIVE' | 'COMPLETED' | 'REJECTED';
+export type WorkflowStatus = 'DRAFT' | 'ACTIVE' | 'COMPLETED' | 'REJECTED' | 'TERMINATED';
 export type StepStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'SKIPPED';
 export type ApproverStrategy = 'USER' | 'ROLE' | 'MANAGER' | 'ANY' | 'DYNAMIC';
+export type WorkflowActionType = 'START' | 'APPROVE' | 'REJECT' | 'SEND_BACK' | 'CANCEL';
+
+export class WorkflowConcurrencyError extends Error {
+  constructor(instanceId: string, expectedVersion: number) {
+    super(`Workflow instance ${instanceId} was modified by another transaction (expected lock version ${expectedVersion}).`);
+    this.name = 'WorkflowConcurrencyError';
+  }
+}
 
 /**
  * THE BLUEPRINT: How a single step is configured
@@ -20,6 +28,7 @@ export interface StepDefinition {
  * THE BLUEPRINT: The entire workflow schema
  */
 export interface WorkflowDefinition {
+  id?: string;
   code: string;             // e.g., 'LEAVE_REQUEST'
   version: number;
   initialStepId: string;    // Where does the engine start?
@@ -37,17 +46,21 @@ export interface WorkflowInstance {
   refId: string;            // The ID of the document in the host application
   status: WorkflowStatus;
   currentStepId: string | null;
+  context?: Record<string, any> | null;
+  lockVersion: number;      // Optimistic Concurrency Control version counter
   createdAt: Date;
+  updatedAt: Date;
+  completedAt?: Date | null;
   createdBy: string;
 }
 
 export interface WorkflowActionLog {
   id: string;
   instanceId: string;
-  action: 'APPROVE' | 'REJECT' | 'SEND_BACK' | 'START';
+  action: WorkflowActionType;
   fromStepId: string | null;
   toStepId: string | null;
   actorId: string;
   comment?: string;
   createdAt: Date;
-}
+}

@@ -2,7 +2,6 @@
 import {
 	WorkflowInstance,
 	WorkflowStatus,
-	StepStatus,
 	WorkflowActionLog,
 } from "../core/types";
 
@@ -17,6 +16,7 @@ export interface StorageAdapter {
 		refId: string;
 		initialStepId: string;
 		createdBy: string;
+		context?: Record<string, any>;
 	}): Promise<WorkflowInstance>;
 
 	/**
@@ -25,16 +25,31 @@ export interface StorageAdapter {
 	getInstance(instanceId: string): Promise<WorkflowInstance | null>;
 
 	/**
-	 * Updates the workflow instance's overall status and current step.
+	 * Updates the workflow instance's overall status, current step, and context with OCC check.
 	 */
 	updateInstanceStatus(
 		instanceId: string,
 		status: WorkflowStatus,
 		newStepId: string | null,
+		expectedVersion?: number,
+		context?: Record<string, any>,
 	): Promise<void>;
 
 	/**
 	 * Logs an action taken by a user for the audit trail.
 	 */
 	logAction(data: Omit<WorkflowActionLog, "id" | "createdAt">): Promise<void>;
+
+	/**
+	 * Atomically updates instance status/step and writes the action log in a single transaction.
+	 */
+	updateInstanceAndLog?(
+		instanceId: string,
+		status: WorkflowStatus,
+		newStepId: string | null,
+		logData: Omit<WorkflowActionLog, "id" | "createdAt">,
+		expectedVersion?: number,
+		context?: Record<string, any>,
+	): Promise<void>;
 }
+

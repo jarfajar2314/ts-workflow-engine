@@ -7,41 +7,70 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum WorkflowStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  REJECTED
+  TERMINATED
+}
+
+enum WorkflowActionType {
+  START
+  APPROVE
+  REJECT
+  SEND_BACK
+  CANCEL
+}
+
 model WorkflowDefinition {
+  id             String   @id @default(uuid())
   code           String
   version        Int      @default(1)
+  name           String?
   initialStepId  String
   steps          Json
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  @@id([code, version])
+  @@unique([code, version])
   @@map("workflow_definitions")
 }
 
 model WorkflowInstance {
-  id              String   @id @default(uuid())
+  id              String         @id @default(uuid())
   workflowCode    String
   workflowVersion Int
   refType         String
   refId           String
-  status          String
+  status          WorkflowStatus @default(ACTIVE)
   currentStepId   String?
-  createdAt       DateTime @default(now())
+  context         Json?
+  lockVersion     Int            @default(1)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  completedAt     DateTime?
   createdBy       String
 
+  logs            WorkflowActionLog[]
+
+  @@index([refType, refId])
+  @@index([workflowCode, status])
   @@map("workflow_instances")
 }
 
 model WorkflowActionLog {
-  id         String   @id @default(uuid())
+  id         String             @id @default(uuid())
   instanceId String
-  action     String
+  instance   WorkflowInstance   @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  action     WorkflowActionType
   fromStepId String?
   toStepId   String?
   actorId    String
   comment    String?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime           @default(now())
 
+  @@index([instanceId, createdAt])
   @@map("workflow_action_logs")
 }
+

@@ -59,43 +59,53 @@ async function runPrismaDemo() {
 		// 6. Initialize the core Engine with Dependency Injection
 		const engine = new WorkflowEngine(definitions, storage, resolver);
 
-		// Context simulating app data (e.g. employee's manager)
-		const employeeContext = { managerId: "boss_sarah" };
+		// 🔔 Register lifecycle event listeners
+		engine.on("stepChange", (event) => {
+			console.log(`  🔔 [EVENT] Step changed from ${event.fromStepId} -> ${event.toStepId} by ${event.actorId}`);
+		});
 
-		// 7. Start a new workflow instance in PostgreSQL
+		engine.on("workflowComplete", (event) => {
+			console.log(`  🎉 [EVENT] Workflow completed! Finished at: ${event.instance.completedAt?.toISOString()}`);
+		});
+
+		// Context simulating app data (e.g. employee's manager and request payload)
+		const employeeContext = { managerId: "boss_sarah", amount: 15000, department: "Engineering" };
+
+		// 7. Start a new workflow instance in PostgreSQL with context
 		console.log("🎬 Initiating new Purchase Order workflow (PO #1092)...");
 		let instance = await engine.startWorkflow(
 			"PURCHASE_ORDER",
 			"purchase_order",
 			"po_1092",
-			"employee_alex"
+			"employee_alex",
+			employeeContext
 		);
 		console.log(`📌 Created Instance ID: ${instance.id}`);
-		console.log(`   Status: [${instance.status}] | Current Step: ${instance.currentStepId}\n`);
+		console.log(`   Status: [${instance.status}] | Step: ${instance.currentStepId} | LockVersion: v${instance.lockVersion}\n`);
 
 		// 8. Step 1: Manager Approves
 		console.log("👤 Manager Sarah approves PO #1092...");
 		await engine.submitAction(instance.id, "boss_sarah", "APPROVE", "Budget approved", employeeContext);
 		instance = (await storage.getInstance(instance.id))!;
-		console.log(`   Status: [${instance.status}] | Advanced to Step: ${instance.currentStepId}\n`);
+		console.log(`   Status: [${instance.status}] | Advanced to: ${instance.currentStepId} | LockVersion: v${instance.lockVersion}\n`);
 
 		// 9. Step 2: Finance requests changes (Send Back to Manager)
 		console.log("🔍 Finance Lead Pam inspects and Rejects (Send Back to Manager)...");
 		await engine.submitAction(instance.id, "finance_lead_1", "REJECT", "Needs vendor tax ID", employeeContext);
 		instance = (await storage.getInstance(instance.id))!;
-		console.log(`   Status: [${instance.status}] | Sent Back to Step: ${instance.currentStepId}\n`);
+		console.log(`   Status: [${instance.status}] | Sent Back to: ${instance.currentStepId} | LockVersion: v${instance.lockVersion}\n`);
 
 		// 10. Step 1: Manager Re-approves with updated vendor info
 		console.log("👤 Manager Sarah updates vendor tax ID and Re-approves...");
 		await engine.submitAction(instance.id, "boss_sarah", "APPROVE", "Tax ID added", employeeContext);
 		instance = (await storage.getInstance(instance.id))!;
-		console.log(`   Status: [${instance.status}] | Returned to Step: ${instance.currentStepId}\n`);
+		console.log(`   Status: [${instance.status}] | Returned to: ${instance.currentStepId} | LockVersion: v${instance.lockVersion}\n`);
 
 		// 11. Step 2: Finance Approves -> Workflow Completed
 		console.log("🎉 Finance Lead Pam gives final approval...");
 		await engine.submitAction(instance.id, "finance_lead_1", "APPROVE", "Verified & paid", employeeContext);
 		instance = (await storage.getInstance(instance.id))!;
-		console.log(`   Status: [${instance.status}] | Workflow Completed! ✨\n`);
+		console.log(`   Status: [${instance.status}] | LockVersion: v${instance.lockVersion} | CompletedAt: ${instance.completedAt?.toISOString()} ✨\n`);
 
 		// 12. Retrieve full audit trail from PostgreSQL workflow_action_logs table
 		console.log("📜 Full PostgreSQL Audit Trail:");
@@ -114,3 +124,4 @@ async function runPrismaDemo() {
 }
 
 runPrismaDemo();
+
