@@ -176,4 +176,46 @@ describe("WorkflowEngine (Phase 6 Tests)", () => {
 		const updatedInstance = await storage.getInstance(instance.id);
 		expect(updatedInstance?.status).toBe("COMPLETED");
 	});
+
+	it("Optimistic Concurrency Control (OCC) lock version increments and detects conflicts", async () => {
+		const workflow = new WorkflowBuilder("OCC_TEST")
+			.addStep("STEP_1", {
+				name: "Approval 1",
+				approverStrategy: "USER",
+				approverValue: "user_1",
+				onApprove: "STEP_2",
+				onReject: "TERMINATE",
+			})
+			.addStep("STEP_2", {
+				name: "Approval 2",
+				approverStrategy: "USER",
+				approverValue: "user_2",
+				onApprove: "COMPLETE",
+				onReject: "TERMINATE",
+			})
+			.build();
+
+		definitions.register(workflow);
+
+		let instance = await engine.startWorkflow("OCC_TEST", "doc", "401", "user_1");
+		expect(instance.lockVersion).toBe(1);
+
+		// First action: lockVersion becomes 2
+		await engine.submitAction(instance.id, "user_1", "APPROVE");
+		instance = (await storage.getInstance(instance.id))!;
+		expect(instance.lockVersion).toBe(2);
+		expect(instance.currentStepId).toBe("STEP_2");
+
+		// Simulate a stale write by passing an outdated lockVersion (1) to updateInstanceStatus
+		await expect(
+			storage.updateInstanceStatus(instance.id, "COMPLETED", null, 1)
+		).rejects.toThrow(/modified by another transaction/i);
+
+		// Second action with current state succeeds and bumps lockVersion to 3
+		await engine.submitAction(instance.id, "user_2", "APPROVE");
+		instance = (await storage.getInstance(instance.id))!;
+		expect(instance.lockVersion).toBe(3);
+		expect(instance.status).toBe("COMPLETED");
+		expect(instance.completedAt).toBeInstanceOf(Date);
+	});
 });

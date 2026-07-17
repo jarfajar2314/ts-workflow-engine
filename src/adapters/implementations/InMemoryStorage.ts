@@ -5,6 +5,7 @@ import {
 	WorkflowInstance,
 	WorkflowStatus,
 	WorkflowActionLog,
+	WorkflowConcurrencyError,
 } from "../../core/types";
 
 export class InMemoryStorage implements StorageAdapter {
@@ -21,8 +22,10 @@ export class InMemoryStorage implements StorageAdapter {
 		refId: string;
 		initialStepId: string;
 		createdBy: string;
+		context?: Record<string, any>;
 	}): Promise<WorkflowInstance> {
 		const id = randomUUID();
+		const now = new Date();
 
 		const instance: WorkflowInstance = {
 			id,
@@ -32,7 +35,10 @@ export class InMemoryStorage implements StorageAdapter {
 			refId: data.refId,
 			status: "ACTIVE", // A newly started workflow is immediately active
 			currentStepId: data.initialStepId,
-			createdAt: new Date(),
+			context: data.context ?? null,
+			lockVersion: 1,
+			createdAt: now,
+			updatedAt: now,
 			createdBy: data.createdBy,
 		};
 
@@ -42,13 +48,17 @@ export class InMemoryStorage implements StorageAdapter {
 
 	async getInstance(instanceId: string): Promise<WorkflowInstance | null> {
 		const instance = this.instances.get(instanceId);
-		return instance || null;
+		if (!instance) return null;
+		// Return a cloned object to simulate database boundary behavior
+		return { ...instance, context: instance.context ? { ...instance.context } : null };
 	}
 
 	async updateInstanceStatus(
 		instanceId: string,
 		status: WorkflowStatus,
 		newStepId: string | null,
+		expectedVersion?: number,
+		context?: Record<string, any>,
 	): Promise<void> {
 		const instance = this.instances.get(instanceId);
 
@@ -56,9 +66,22 @@ export class InMemoryStorage implements StorageAdapter {
 			throw new Error(`Cannot update: Instance ${instanceId} not found`);
 		}
 
-		// Mutate the state and save it back to the Map
+		if (expectedVersion !== undefined && instance.lockVersion !== expectedVersion) {
+			throw new WorkflowConcurrencyError(instanceId, expectedVersion);
+		}
+
+		const now = new Date();
 		instance.status = status;
 		instance.currentStepId = newStepId;
+		instance.lockVersion += 1;
+		instance.updatedAt = now;
+		if (status === "COMPLETED" || status === "REJECTED" || status === "TERMINATED") {
+			instance.completedAt = now;
+		}
+		if (context) {
+			instance.context = { ...(instance.context || {}), ...context };
+		}
+
 		this.instances.set(instanceId, instance);
 	}
 
@@ -74,6 +97,18 @@ export class InMemoryStorage implements StorageAdapter {
 		this.actionLogs.push(log);
 	}
 
+	async updateInstanceAndLog(
+		instanceId: string,
+		status: WorkflowStatus,
+		newStepId: string | null,
+		logData: Omit<WorkflowActionLog, "id" | "createdAt">,
+		expectedVersion?: number,
+		context?: Record<string, any>,
+	): Promise<void> {
+		await this.updateInstanceStatus(instanceId, status, newStepId, expectedVersion, context);
+		await this.logAction(logData);
+	}
+
 	/**
 	 * Helper method exclusive to this InMemory version.
 	 * Very useful for asserting tests later (e.g., checking if an audit log was created).
@@ -82,3 +117,4 @@ export class InMemoryStorage implements StorageAdapter {
 		return this.actionLogs.filter((log) => log.instanceId === instanceId);
 	}
 }
+

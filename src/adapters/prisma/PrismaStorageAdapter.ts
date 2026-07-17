@@ -3,6 +3,7 @@ import {
 	WorkflowInstance,
 	WorkflowStatus,
 	WorkflowActionLog,
+	WorkflowConcurrencyError,
 } from "../../core/types";
 
 export interface PrismaStorageClient {
@@ -10,11 +11,13 @@ export interface PrismaStorageClient {
 		create(args: any): Promise<any>;
 		findUnique(args: any): Promise<any>;
 		update(args: any): Promise<any>;
+		updateMany(args: any): Promise<any>;
 	};
 	workflowActionLog: {
 		create(args: any): Promise<any>;
 		findMany(args: any): Promise<any>;
 	};
+	$transaction?: (arg: any) => Promise<any>;
 }
 
 export class PrismaStorageAdapter implements StorageAdapter {
@@ -27,6 +30,7 @@ export class PrismaStorageAdapter implements StorageAdapter {
 		refId: string;
 		initialStepId: string;
 		createdBy: string;
+		context?: Record<string, any>;
 	}): Promise<WorkflowInstance> {
 		const record = await this.prisma.workflowInstance.create({
 			data: {
@@ -36,21 +40,13 @@ export class PrismaStorageAdapter implements StorageAdapter {
 				refId: data.refId,
 				status: "ACTIVE",
 				currentStepId: data.initialStepId,
+				context: data.context ?? undefined,
+				lockVersion: 1,
 				createdBy: data.createdBy,
 			},
 		});
 
-		return {
-			id: record.id,
-			workflowCode: record.workflowCode,
-			workflowVersion: record.workflowVersion,
-			refType: record.refType,
-			refId: record.refId,
-			status: record.status as WorkflowStatus,
-			currentStepId: record.currentStepId,
-			createdAt: record.createdAt,
-			createdBy: record.createdBy,
-		};
+		return this.mapToInstance(record);
 	}
 
 	async getInstance(instanceId: string): Promise<WorkflowInstance | null> {
@@ -59,32 +55,63 @@ export class PrismaStorageAdapter implements StorageAdapter {
 		});
 
 		if (!record) return null;
-
-		return {
-			id: record.id,
-			workflowCode: record.workflowCode,
-			workflowVersion: record.workflowVersion,
-			refType: record.refType,
-			refId: record.refId,
-			status: record.status as WorkflowStatus,
-			currentStepId: record.currentStepId,
-			createdAt: record.createdAt,
-			createdBy: record.createdBy,
-		};
+		return this.mapToInstance(record);
 	}
 
 	async updateInstanceStatus(
 		instanceId: string,
 		status: WorkflowStatus,
 		newStepId: string | null,
+		expectedVersion?: number,
+		context?: Record<string, any>,
 	): Promise<void> {
-		await this.prisma.workflowInstance.update({
-			where: { id: instanceId },
-			data: {
+		const now = new Date();
+		const isTerminal = status === "COMPLETED" || status === "REJECTED" || status === "TERMINATED";
+
+		if (expectedVersion !== undefined) {
+			const updateData: any = {
 				status,
 				currentStepId: newStepId,
-			},
-		});
+				lockVersion: { increment: 1 },
+				updatedAt: now,
+			};
+			if (isTerminal) {
+				updateData.completedAt = now;
+			}
+			if (context) {
+				updateData.context = context;
+			}
+
+			const res = await this.prisma.workflowInstance.updateMany({
+				where: {
+					id: instanceId,
+					lockVersion: expectedVersion,
+				},
+				data: updateData,
+			});
+
+			if (res.count === 0) {
+				throw new WorkflowConcurrencyError(instanceId, expectedVersion);
+			}
+		} else {
+			const updateData: any = {
+				status,
+				currentStepId: newStepId,
+				lockVersion: { increment: 1 },
+				updatedAt: now,
+			};
+			if (isTerminal) {
+				updateData.completedAt = now;
+			}
+			if (context) {
+				updateData.context = context;
+			}
+
+			await this.prisma.workflowInstance.update({
+				where: { id: instanceId },
+				data: updateData,
+			});
+		}
 	}
 
 	async logAction(
@@ -100,6 +127,26 @@ export class PrismaStorageAdapter implements StorageAdapter {
 				comment: data.comment,
 			},
 		});
+	}
+
+	async updateInstanceAndLog(
+		instanceId: string,
+		status: WorkflowStatus,
+		newStepId: string | null,
+		logData: Omit<WorkflowActionLog, "id" | "createdAt">,
+		expectedVersion?: number,
+		context?: Record<string, any>,
+	): Promise<void> {
+		if (typeof this.prisma.$transaction === "function") {
+			await this.prisma.$transaction(async (tx: PrismaStorageClient) => {
+				const txAdapter = new PrismaStorageAdapter(tx);
+				await txAdapter.updateInstanceStatus(instanceId, status, newStepId, expectedVersion, context);
+				await txAdapter.logAction(logData);
+			});
+		} else {
+			await this.updateInstanceStatus(instanceId, status, newStepId, expectedVersion, context);
+			await this.logAction(logData);
+		}
 	}
 
 	async getLogsForInstance(instanceId: string): Promise<WorkflowActionLog[]> {
@@ -119,4 +166,23 @@ export class PrismaStorageAdapter implements StorageAdapter {
 			createdAt: r.createdAt,
 		}));
 	}
+
+	private mapToInstance(record: any): WorkflowInstance {
+		return {
+			id: record.id,
+			workflowCode: record.workflowCode,
+			workflowVersion: record.workflowVersion,
+			refType: record.refType,
+			refId: record.refId,
+			status: record.status as WorkflowStatus,
+			currentStepId: record.currentStepId,
+			context: typeof record.context === "string" ? JSON.parse(record.context) : record.context ?? null,
+			lockVersion: record.lockVersion ?? 1,
+			createdAt: record.createdAt,
+			updatedAt: record.updatedAt ?? record.createdAt,
+			completedAt: record.completedAt ?? null,
+			createdBy: record.createdBy,
+		};
+	}
 }
+

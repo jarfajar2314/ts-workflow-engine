@@ -1,6 +1,6 @@
 {
 	"name": "@jarfajar/ts-workflow-engine",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"description": "A lightweight, code-first, framework-agnostic workflow and approval engine for Node.js.",
 	"main": "./dist/index.js",
 	"module": "./dist/index.mjs",
