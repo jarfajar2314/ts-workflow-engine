@@ -1,0 +1,47 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model WorkflowDefinition {
+  code           String
+  version        Int      @default(1)
+  initialStepId  String
+  steps          Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@id([code, version])
+  @@map("workflow_definitions")
+}
+
+model WorkflowInstance {
+  id              String   @id @default(uuid())
+  workflowCode    String
+  workflowVersion Int
+  refType         String
+  refId           String
+  status          String
+  currentStepId   String?
+  createdAt       DateTime @default(now())
+  createdBy       String
+
+  @@map("workflow_instances")
+}
+
+model WorkflowActionLog {
+  id         String   @id @default(uuid())
+  instanceId String
+  action     String
+  fromStepId String?
+  toStepId   String?
+  actorId    String
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  @@map("workflow_action_logs")
+}
