@@ -1,104 +1,47 @@
 <a id="readme-top"></a>
 
-[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![MIT License][license-shield]][license-url]
-[![LinkedIn][linkedin-shield]][linkedin-url]
+[![MIT License](https://img.shields.io/github/license/jarfajar2314/ts-workflow-engine.svg?style=for-the-badge)](file:///c:/Users/User/Codes/Other/workflow-engine/LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
 
 <br />
 <div align="center">
-  <!-- <a href="https://github.com/jarfajar2314/ts-workflow-engine">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Typescript_logo_2020.svg/512px-Typescript_logo_2020.svg.png" alt="Logo" width="80" height="80">
-  </a> -->
-
-<h3 align="center">Workflow Engine</h3>
+  <h2 align="center">@jarfajar/ts-workflow-engine</h2>
 
   <p align="center">
-    A lightweight, code-first, framework-agnostic workflow and approval engine for Node.js. Build complex state machines, human-in-the-loop approvals, and dynamic routing with zero database lock-in.
-    <br />
-    <a href="https://github.com/jarfajar2314/ts-workflow-engine"><strong>Explore the docs »</strong></a>
-    <br />
-    <br />
-    <a href="https://github.com/jarfajar2314/ts-workflow-engine">View Demo</a>
-    &middot;
-    <a href="https://github.com/jarfajar2314/ts-workflow-engine/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
-    &middot;
-    <a href="https://github.com/jarfajar2314/ts-workflow-engine/issues/new?labels=enhancement&template=feature-request---.md">Request Feature</a>
+    A lightweight, code-first, framework-agnostic workflow and approval engine for Node.js & TypeScript. Build complex state machines, human-in-the-loop approval matrices, and dynamic routing with zero database lock-in.
   </p>
 </div>
 
-<details>
-  <summary>Table of Contents</summary>
-  <ol>
-    <li>
-      <a href="#about-the-project">About The Project</a>
-      <ul>
-        <li><a href="#built-with">Built With</a></li>
-      </ul>
-    </li>
-    <li>
-      <a href="#getting-started">Getting Started</a>
-      <ul>
-        <li><a href="#prerequisites">Prerequisites</a></li>
-        <li><a href="#installation">Installation</a></li>
-      </ul>
-    </li>
-    <li><a href="#usage">Usage</a></li>
-    <li><a href="#roadmap">Roadmap</a></li>
-    <li><a href="#contributing">Contributing</a></li>
-    <li><a href="#license">License</a></li>
-    <li><a href="#contact">Contact</a></li>
-  </ol>
-</details>
+---
 
-## About The Project
+## Features
 
-Building robust approval matrices (like Leave Requests, Expense Claims, or Document Publishing) often results in messy, hardcoded database logic. **TS Workflow Engine** solves this by letting you define your business logic purely in TypeScript using a fluent Builder API.
+- ⚡ **Code-First & Type-Safe**: Define workflows in pure TypeScript using a clean, fluent `WorkflowBuilder` API.
+- 🔌 **Adapter-Driven Architecture**: Core engine contains zero I/O logic. Plug in memory storage for unit tests or database adapters for production.
+- 🗄️ **Official Prisma & PostgreSQL Support**: Persist workflow definitions, live execution states, and full audit action logs directly to PostgreSQL/SQL via `PrismaDefinitionAdapter` and `PrismaStorageAdapter`.
+- 🔐 **Custom Identity Resolvers**: Decouple authorization logic (`ResolverAdapter`) to validate managers, roles, dynamic assignees, or custom user permissions.
+- 🔄 **Advanced Routing**: Out-of-the-box support for sequential steps, branching, rejection terminations, and **Send Back** re-approval cycles.
 
-Because it is built on the Adapter Pattern, the core engine has zero opinions about your database. You can run it entirely in memory for lightning-fast testing, or plug it into Prisma, TypeORM, or Drizzle for production.
+---
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+## Installation
 
-### Built With
+```bash
+npm install @jarfajar/ts-workflow-engine
+```
 
-- [![TypeScript][TypeScript]][TypeScript-url]
-- [![NodeJS][Node.js]][Node-url]
+If using Prisma for database persistence:
+```bash
+npm install @prisma/client
+npm install -D prisma
+```
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+---
 
-## Getting Started
+## Quick Start
 
-To get a local copy up and running follow these simple steps.
-
-### Prerequisites
-
-- npm
-    ```sh
-    npm install npm@latest -g
-    ```
-
-### Installation
-
-1. Clone the repo
-    ```sh
-    git clone https://github.com/jarfajar2314/ts-workflow-engine.git
-    ```
-2. Install NPM packages
-    ```sh
-    npm install
-    ```
-3. Build the package
-    ```sh
-    npm run build
-    ```
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-## Usage
-
-Define your workflow using the fluent WorkflowBuilder and run it instantly using the built-in InMemory adapters.
+### 1. In-Memory Usage (Testing & Rapid Prototyping)
 
 ```typescript
 import {
@@ -106,106 +49,128 @@ import {
 	WorkflowEngine,
 	CodeDefinitionAdapter,
 	InMemoryStorage,
-} from "ts-workflow-engine";
+	ResolverAdapter,
+	StepDefinition,
+} from "@jarfajar/ts-workflow-engine";
 
-// 1. Define your blueprint
-const leaveWorkflow = new WorkflowBuilder("LEAVE_REQUEST", 1)
+// Define identity resolver
+class SimpleResolver implements ResolverAdapter {
+	async getAuthorizedActors(stepDef: StepDefinition, context: any) {
+		if (stepDef.approverStrategy === "USER") return [stepDef.approverValue];
+		return [];
+	}
+}
+
+// 1. Define blueprint
+const leaveWorkflow = new WorkflowBuilder("LEAVE_REQUEST")
 	.addStep("MANAGER_APPROVAL", {
-		approverStrategy: "MANAGER",
-		approverValue: "",
+		name: "Manager Approval",
+		approverStrategy: "USER",
+		approverValue: "boss_user_1",
 		onApprove: "HR_APPROVAL",
 		onReject: "TERMINATE",
 	})
 	.addStep("HR_APPROVAL", {
-		approverStrategy: "ROLE",
-		approverValue: "hr_admin",
+		name: "HR Approval",
+		approverStrategy: "USER",
+		approverValue: "hr_admin_99",
 		onApprove: "COMPLETE",
-		onReject: "MANAGER_APPROVAL",
+		onReject: "MANAGER_APPROVAL", // Send back to manager if rejected
 	})
 	.build();
 
-// 2. Register the adapters
+// 2. Register blueprint and initialize engine
 const definitions = new CodeDefinitionAdapter();
 definitions.register(leaveWorkflow);
 
 const storage = new InMemoryStorage();
+const engine = new WorkflowEngine(definitions, storage, new SimpleResolver());
 
-// 3. Initialize the Engine
-const engine = new WorkflowEngine(definitions, storage, myCustomResolver);
+// 3. Start workflow instance
+let instance = await engine.startWorkflow("LEAVE_REQUEST", "leave_doc", "req_101", "employee_1");
 
-// 4. Start and progress a workflow
-const instance = await engine.startWorkflow("LEAVE_REQUEST", "ref-123");
-await engine.submitAction(instance.id, "boss_user_id", "APPROVE");
+// 4. Submit approvals
+await engine.submitAction(instance.id, "boss_user_1", "APPROVE");
+await engine.submitAction(instance.id, "hr_admin_99", "APPROVE");
 ```
 
-_For more examples, please refer to the [Documentation](https://example.com)_
+---
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+### 2. Database Storage with Prisma & PostgreSQL
+
+```typescript
+import { PrismaClient } from "@prisma/client";
+import {
+	WorkflowBuilder,
+	WorkflowEngine,
+	PrismaDefinitionAdapter,
+	PrismaStorageAdapter,
+} from "@jarfajar/ts-workflow-engine";
+
+const prisma = new PrismaClient();
+
+// 1. Initialize Prisma Adapters
+const definitions = new PrismaDefinitionAdapter(prisma);
+const storage = new PrismaStorageAdapter(prisma);
+const engine = new WorkflowEngine(definitions, storage, myCustomResolver);
+
+// 2. Save blueprint directly into PostgreSQL
+const poWorkflow = new WorkflowBuilder("PURCHASE_ORDER")
+	.addStep("MANAGER", {
+		name: "Manager Review",
+		approverStrategy: "DYNAMIC",
+		approverValue: "managerId",
+		onApprove: "FINANCE",
+		onReject: "TERMINATE",
+	})
+	.addStep("FINANCE", {
+		name: "Finance Audit",
+		approverStrategy: "USER",
+		approverValue: "finance_lead",
+		onApprove: "COMPLETE",
+		onReject: "MANAGER", // Send Back
+	})
+	.build();
+
+await definitions.registerWorkflow(poWorkflow);
+
+// 3. Start instance and submit actions
+const instance = await engine.startWorkflow("PURCHASE_ORDER", "order", "po_501", "alex");
+await engine.submitAction(instance.id, "sarah_manager", "APPROVE", "Approved", { managerId: "sarah_manager" });
+
+// 4. Query PostgreSQL Audit Logs
+const auditTrail = await storage.getLogsForInstance(instance.id);
+console.log(auditTrail);
+```
+
+---
+
+## Demos
+
+Run the included runnable examples:
+
+```bash
+# Run in-memory demo
+npm run demo
+
+# Run Prisma + PostgreSQL demo (requires database connection in .env)
+npm run demo:prisma
+```
+
+---
 
 ## Roadmap
 
-- [x] Core Execution Engine
-- [x] Code-First Fluent Builder API
-- [x] In-Memory Adapters for Testing
-- [ ] Official Prisma Storage Adapter
-- [ ] Drizzle ORM Storage Adapter
-- [ ] Visualizer Dashboard UI
+- [x] Core Execution Engine & State Machine
+- [x] Code-First Fluent Builder API (`WorkflowBuilder`)
+- [x] Fast In-Memory Adapters for Unit Testing
+- [x] Official Prisma & PostgreSQL Adapters (`PrismaDefinitionAdapter`, `PrismaStorageAdapter`)
+- [ ] Drizzle ORM Storage & Definition Adapters
+- [ ] Webhook / Event Emitter Lifecycle Hooks (`onStepChange`, `onWorkflowComplete`)
+- [ ] Visual Dashboard UI for Workflow Inspection
 
-See the [open issues](https://github.com/jarfajar2314/ts-workflow-engine/issues) for a full list of proposed features (and known issues).
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-## Contributing
-
-Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
-
-If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement".
-Don't forget to give the project a star! Thanks again!
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-### Top contributors:
-
-<a href="https://github.com/jarfajar2314/ts-workflow-engine/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=jarfajar2314/ts-workflow-engine" alt="contrib.rocks image" />
-</a>
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+---
 
 ## License
 
-Distributed under the MIT License. See `LICENSE.txt` for more information.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-## Contact
-
-Muhammad Fajar Yusuf Firdaus - mfajaryusuff@gmail.com
-
-Project Link: [https://github.com/jarfajar2314/ts-workflow-engine](https://github.com/jarfajar2314/ts-workflow-engine)
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-<!-- MARKDOWN LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-
-[contributors-shield]: https://img.shields.io/github/contributors/jarfajar2314/ts-workflow-engine.svg?style=for-the-badge
-[contributors-url]: https://github.com/jarfajar2314/ts-workflow-engine/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/jarfajar2314/ts-workflow-engine.svg?style=for-the-badge
-[forks-url]: https://github.com/jarfajar2314/ts-workflow-engine/network/members
-[stars-shield]: https://img.shields.io/github/stars/jarfajar2314/ts-workflow-engine.svg?style=for-the-badge
-[stars-url]: https://github.com/jarfajar2314/ts-workflow-engine/stargazers
-[issues-shield]: https://img.shields.io/github/issues/jarfajar2314/ts-workflow-engine.svg?style=for-the-badge
-[issues-url]: https://github.com/jarfajar2314/ts-workflow-engine/issues
-[license-shield]: https://img.shields.io/github/license/jarfajar2314/ts-workflow-engine.svg?style=for-the-badge
-[license-url]: https://github.com/jarfajar2314/ts-workflow-engine/blob/master/LICENSE.txt
-[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
-[linkedin-url]: https://linkedin.com/in/linkedin_username
-[TypeScript]: https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white
-[TypeScript-url]: https://www.typescriptlang.org/
-[Node.js]: https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white
-[Node-url]: https://nodejs.org/
+Distributed under the MIT License. See [LICENSE](file:///c:/Users/User/Codes/Other/workflow-engine/LICENSE) for more information.

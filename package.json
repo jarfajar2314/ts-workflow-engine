@@ -5,12 +5,26 @@
 	"main": "./dist/index.js",
 	"module": "./dist/index.mjs",
 	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.mjs",
+			"require": "./dist/index.js"
+		}
+	},
 	"files": [
-		"dist"
+		"dist",
+		"prisma/schema.prisma",
+		"README.md",
+		"LICENSE"
 	],
 	"scripts": {
 		"build": "tsup && tsc --emitDeclarationOnly",
-		"test": "vitest run"
+		"test": "vitest run",
+		"prisma:generate": "prisma generate",
+		"prisma:push": "prisma db push",
+		"demo": "npx tsx example/demo.ts",
+		"demo:prisma": "npx tsx example/prisma-demo.ts"
 	},
 	"repository": {
 		"type": "git",
@@ -27,9 +41,14 @@
 	"license": "MIT",
 	"devDependencies": {
 		"@types/node": "^25.9.3",
+		"dotenv": "^17.4.2",
+		"prisma": "^5.22.0",
 		"tsup": "^8.5.1",
+		"tsx": "^4.23.1",
 		"typescript": "^6.0.3",
 		"vitest": "^4.1.8"
+	},
+	"dependencies": {
+		"@prisma/client": "^5.22.0"
 	}
 }
-
